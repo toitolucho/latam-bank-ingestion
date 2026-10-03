@@ -19,7 +19,7 @@ Config-driven Databricks Asset Bundle (DAB) to ingest LATAM Bank datasets from A
 
 ## 2. Architecture & Data Flow
 
-> 📖 **Deep Dive**: See [docs/INGESTION_STRATEGY_FACT_TABLES.md](docs/INGESTION_STRATEGY_FACT_TABLES.md) for the architecture analysis comparing S3 ingestion options, free-tier limits, and specific performance recommendations for massive fact tables.
+> **Technical Reference**: Refer to [docs/INGESTION_STRATEGY_FACT_TABLES.md](docs/INGESTION_STRATEGY_FACT_TABLES.md) for architectural analysis comparing S3 ingestion options, platform constraints, and performance recommendations for high-volume fact tables.
 
 ```text
 AWS S3 Bucket (s3://factored-datathon-2026-s3-157725502942-us-east-2-an/data/)
