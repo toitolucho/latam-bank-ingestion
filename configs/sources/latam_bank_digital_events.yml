@@ -1,24 +1,24 @@
-- source_table: branches
+- source_table: digital_events
   sor: latam_bank
-  description: "LATAM Bank branch network, physical and express branch locations"
+  description: "LATAM Bank mobile app and web portal user clickstream, navigation, and digital interactions"
 
   # --- S3 copy (option 2) ---
   s3_copy:
     bucket: factored-datathon-2026-s3-157725502942-us-east-2-an
     region: us-east-2
-    prefix: data/
-    file_name_pattern: "branches.csv"
+    prefix: data/digital_events/
+    file_name_pattern: "*.csv"
     secret_scope: aws-datathon
     access_key_secret: aws-access-key-id
     secret_key_secret: aws-secret-access-key
     volume: workspace.staging_latam_bank.landing
 
   # --- Auto Loader ---
-  source_path: /Volumes/workspace/staging_latam_bank/landing/branches/
+  source_path: /Volumes/workspace/staging_latam_bank/landing/digital_events/
   file_format: csv
   bronze_options:
     include_existing_files: true
-    file_name_pattern: "branches.csv"
+    file_name_pattern: "*.csv"
     schema_evolution_mode: addNewColumns
     csv_options:
       header: true
@@ -31,9 +31,10 @@
 
   # --- Silver (SCD Type 2) ---
   scd_2_key_list:
-    - branch_id
-  history_timestamp_source: pipeline_timestamp
+    - event_id
+  history_timestamp_source: event_date
+  history_timestamp_format: "yyyy-MM-dd HH:mm:ss"
   scd_type: 2
   data_quality_rules:
-    - description: branch_id_not_null
-      expr: "`branch_id` IS NOT NULL"
+    - description: event_id_not_null
+      expr: "`event_id` IS NOT NULL"
