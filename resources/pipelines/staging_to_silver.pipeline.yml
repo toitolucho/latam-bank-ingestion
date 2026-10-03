@@ -1,0 +1,24 @@
+resources:
+  pipelines:
+    latam_bank_staging_to_silver:
+      name: latam_bank_staging_to_silver
+      catalog: ${var.catalog}
+      schema: silver_latam_bank
+      serverless: true
+      channel: CURRENT
+      photon: true
+      edition: ADVANCED
+      continuous: false
+      configuration:
+        "pipelines.pipelineType": "WORKSPACE"
+        pipeline.catalog: ${var.catalog}
+        pipeline.project_root: ${workspace.root_path}/files
+        pipeline.config_dir: ${workspace.root_path}/files/configs/sources
+      libraries:
+        - file:
+            path: ../../src/pipelines/staging_to_silver/bronze.py
+        - file:
+            path: ../../src/pipelines/staging_to_silver/silver.py
+      environment:
+        dependencies:
+          - pyyaml

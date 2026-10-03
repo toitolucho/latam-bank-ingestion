@@ -1,0 +1,21 @@
+resources:
+  pipelines:
+    latam_bank_file_loader_to_staging:
+      name: latam_bank_file_loader_to_staging
+      catalog: ${var.catalog}
+      schema: staging_latam_bank
+      serverless: true
+      channel: CURRENT
+      photon: true
+      continuous: false
+      configuration:
+        catalog_env: dev
+        pipeline.catalog: ${var.catalog}
+        pipeline_config_dir: ${workspace.root_path}/files/configs/sources
+        pipeline_source_dir: ${workspace.root_path}/files/src/pipelines/file_loader
+      libraries:
+        - file:
+            path: ../../src/pipelines/file_loader/acquisition_file_pipeline.py
+      environment:
+        dependencies:
+          - pyyaml

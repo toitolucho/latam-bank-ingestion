@@ -1,0 +1,38 @@
+- source_table: <table>
+  sor: latam_bank
+  description: <what the file holds and how often it arrives>
+
+  # --- S3 copy (option 2 only; delete this block for option 1) ---
+  s3_copy:
+    bucket: factored-datathon-2026-s3-157725502942-us-east-2-an
+    region: us-east-2
+    prefix: data/
+    file_name_pattern: "<pattern>.csv"
+    secret_scope: aws-datathon
+    access_key_secret: aws-access-key-id
+    secret_key_secret: aws-secret-access-key
+    volume: workspace.staging_latam_bank.landing
+
+  # --- Auto Loader ---
+  # option 2: the volume folder s3_copy writes to (must match exactly)
+  # option 1: s3://<bucket>/<prefix>/
+  source_path: /Volumes/workspace/staging_latam_bank/landing/<table>/
+  file_format: csv
+  bronze_options:
+    include_existing_files: true
+    file_name_pattern: "<pattern>.csv"
+    schema_evolution_mode: addNewColumns
+    csv_options:
+      header: true
+      delimiter: ","
+
+  # --- Layers ---
+  staging_schema: staging_latam_bank
+  source_schema: bronze_latam_bank
+  target_schema: silver_latam_bank
+
+  # --- Silver (empty key list = silver skips this table) ---
+  scd_2_key_list: []
+  history_timestamp_source: pipeline_timestamp
+  scd_type: 2
+  data_quality_rules: ~

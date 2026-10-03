@@ -1,0 +1,31 @@
+resources:
+  jobs:
+    latam_bank_files_to_silver:
+      name: latam_bank_files_to_silver
+      environments:
+        - environment_key: serverless_default
+          spec:
+            environment_version: "2"
+            dependencies:
+              - pyyaml
+              - boto3
+      tasks:
+        - task_key: s3_copy
+          environment_key: serverless_default
+          spark_python_task:
+            python_file: ../../src/python/run_s3_copy.py
+            parameters:
+              - "--config-dir"
+              - "../../configs/sources"
+        - task_key: file_loader_to_staging
+          depends_on:
+            - task_key: s3_copy
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.latam_bank_file_loader_to_staging.id}
+            full_refresh: false
+        - task_key: staging_to_silver
+          depends_on:
+            - task_key: file_loader_to_staging
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.latam_bank_staging_to_silver.id}
+            full_refresh: false

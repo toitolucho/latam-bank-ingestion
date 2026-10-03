@@ -1,0 +1,29 @@
+bundle:
+  name: latam-bank-ingestion
+
+include:
+  - resources/jobs/*.yml
+  - resources/pipelines/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for every schema this bundle creates
+    default: workspace
+
+presets:
+  tags:
+    project: ${bundle.name}
+    environment: ${bundle.target}
+    managed_by: databricks-asset-bundle
+    source_system: latam_bank
+
+targets:
+  dev_sandbox:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-c48d6b98-036d.cloud.databricks.com
+      profile: datathon-dev
+      root_path: /Users/${workspace.current_user.userName}/.bundle/${bundle.name}/dev_sandbox
+    variables:
+      catalog: workspace
