@@ -1,0 +1,41 @@
+# Levanta backend + interfaz:  docker compose up --build   ->  http://localhost:8080
+# El backend lee su configuracion de backend/.env (ver backend/.env.example). No se publica su puerto:
+# el navegador solo habla con el nginx de la interfaz, que reenvia /v1 al backend.
+services:
+  chat-backend:
+    build: ./backend
+    image: chat-backend:0.1.0
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      CHAT_ENV: ${CHAT_ENV:-dev}
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    # Descomente para abrir /docs (OpenAPI) en http://localhost:8000
+    # ports:
+    #   - "8000:8000"
+
+  chat-frontend:
+    build: ./frontend
+    image: chat-frontend:0.1.0
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"
+    environment:
+      BACKEND_URL: http://chat-backend:8000
+      # Si el backend exige X-API-Key (CHAT_API_KEYS), la misma clave va aqui; el proxy la agrega en el servidor.
+      CHAT_API_KEY: ${CHAT_API_KEY:-}
+    depends_on:
+      chat-backend:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /etc/nginx/conf.d:uid=101,gid=101,mode=0755
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
