@@ -12,7 +12,7 @@ variables:
     default: workspace
   warehouse_id:
     description: SQL warehouse that runs the SQL tasks (serverless recommended)
-    default: ""
+    default: "2ab3d031bf26ee0d"
   bronze_schema:
     description: Bronze schema (raw CSV loads, all STRING)
     default: workspace.bronze_latam_bank
