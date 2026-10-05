@@ -1,0 +1,207 @@
+resources:
+  jobs:
+    # Full medallion pipeline, scheduled as in production: bronze -> silver -> gold, with data
+    # quality metrics written to gold pipeline_quality_metrics on every run.
+    latam_bank_medallion:
+      name: latam_bank_medallion
+      description: >
+        Loads the landing CSVs into bronze (all STRING, _rescued_data), types and deduplicates them
+        into silver, records bronze/silver quality metrics (duplicates, nulls, schema changes) and
+        stops if one fails, then rebuilds the gold credit tables and customer summaries and runs the
+        gold quality checks. Same files run against the _test or the real schemas (job parameters).
+      tags:
+        project: credit-assistant
+        layer: medallion
+      max_concurrent_runs: 1
+      timeout_seconds: 7200
+      parameters:
+        - name: bronze_schema
+          default: ${var.bronze_schema}
+        - name: silver_schema
+          default: ${var.silver_schema}
+        - name: gold_schema
+          default: ${var.gold_schema}
+        # YYYY-MM-DD. Empty uses the policy cutoff in ref_policy_params (2026-06-30 for the static
+        # hackathon data). With live data set the default to "{{job.start_time.iso_date}}".
+        - name: as_of_date
+          default: ""
+      # Daily, as in production. The hackathon data is static, so it stays paused: run it by hand.
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: America/Bogota
+        pause_status: PAUSED
+      environments:
+        - environment_key: serverless_default
+          spec:
+            environment_version: "2"
+            dependencies:
+              - pyyaml
+              - boto3
+      tasks:
+        # ---------------------------------------------------------------- s3_copy
+        - task_key: s3_copy
+          timeout_seconds: 1800
+          max_retries: 1
+          min_retry_interval_millis: 60000
+          environment_key: serverless_default
+          spark_python_task:
+            python_file: ../../../src/python/run_s3_copy.py
+            parameters:
+              - "--config-dir"
+              - "../../../configs/sources"
+
+        # ---------------------------------------------------------------- bronze
+        - task_key: bronze_load
+          depends_on:
+            - task_key: s3_copy
+          timeout_seconds: 3600
+          max_retries: 1
+          min_retry_interval_millis: 60000
+          notebook_task:                       # PySpark notebook on serverless jobs compute
+            notebook_path: ../01_bronze.py
+            base_parameters:
+              bronze_schema: "{{job.parameters.bronze_schema}}"
+
+        # ---------------------------------------------------------------- silver
+        - task_key: silver_typed_dedup
+          depends_on:
+            - task_key: bronze_load
+          timeout_seconds: 3600
+          max_retries: 1
+          min_retry_interval_millis: 60000
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../02_silver.sql
+            parameters:
+              bronze_schema: "{{job.parameters.bronze_schema}}"
+              silver_schema: "{{job.parameters.silver_schema}}"
+
+        - task_key: silver_quality_checks
+          depends_on:
+            - task_key: silver_typed_dedup
+          timeout_seconds: 1800
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../02_silver_quality_checks.sql
+            parameters:
+              bronze_schema: "{{job.parameters.bronze_schema}}"
+              silver_schema: "{{job.parameters.silver_schema}}"
+              gold_schema: "{{job.parameters.gold_schema}}"
+              run_id: "{{job.run_id}}"
+
+        # ---------------------------------------------------------------- gold
+        # Idempotent: replaces fn_*, creates credit_offers only if missing (never dropped).
+        - task_key: gold_deploy_objects
+          depends_on:
+            - task_key: silver_quality_checks
+          timeout_seconds: 900
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../gold/00_deploy_objects.sql
+            parameters:
+              gold_schema: "{{job.parameters.gold_schema}}"
+
+        - task_key: gold_customer_credit_profile
+          depends_on:
+            - task_key: gold_deploy_objects
+          timeout_seconds: 1800
+          max_retries: 1
+          min_retry_interval_millis: 60000
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../gold/10_customer_credit_profile.sql
+            parameters:
+              as_of_date: "{{job.parameters.as_of_date}}"
+              silver_schema: "{{job.parameters.silver_schema}}"
+              gold_schema: "{{job.parameters.gold_schema}}"
+
+        - task_key: gold_customer_credit_offer_options
+          depends_on:
+            - task_key: gold_customer_credit_profile
+          timeout_seconds: 1800
+          max_retries: 1
+          min_retry_interval_millis: 60000
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../gold/20_customer_credit_offer_options.sql
+            parameters:
+              silver_schema: "{{job.parameters.silver_schema}}"
+              gold_schema: "{{job.parameters.gold_schema}}"
+
+        # Customer summaries: independent of each other and of the credit tables.
+        - task_key: gold_customer_products_summary
+          depends_on:
+            - task_key: silver_quality_checks
+          timeout_seconds: 1800
+          max_retries: 1
+          min_retry_interval_millis: 60000
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../gold/30_customer_products_summary.sql
+            parameters:
+              silver_schema: "{{job.parameters.silver_schema}}"
+              gold_schema: "{{job.parameters.gold_schema}}"
+
+        - task_key: gold_customer_complaints_summary
+          depends_on:
+            - task_key: silver_quality_checks
+          timeout_seconds: 1800
+          max_retries: 1
+          min_retry_interval_millis: 60000
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../gold/31_customer_complaints_summary.sql
+            parameters:
+              silver_schema: "{{job.parameters.silver_schema}}"
+              gold_schema: "{{job.parameters.gold_schema}}"
+
+        - task_key: gold_customer_cashflow_summary
+          depends_on:
+            - task_key: silver_quality_checks
+          timeout_seconds: 1800
+          max_retries: 1
+          min_retry_interval_millis: 60000
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../gold/32_customer_cashflow_summary.sql
+            parameters:
+              silver_schema: "{{job.parameters.silver_schema}}"
+              gold_schema: "{{job.parameters.gold_schema}}"
+
+        - task_key: gold_quality_checks
+          depends_on:
+            - task_key: gold_customer_credit_offer_options
+            - task_key: gold_customer_products_summary
+            - task_key: gold_customer_complaints_summary
+            - task_key: gold_customer_cashflow_summary
+          timeout_seconds: 900
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../gold/90_quality_checks.sql
+            parameters:
+              silver_schema: "{{job.parameters.silver_schema}}"
+              gold_schema: "{{job.parameters.gold_schema}}"
+              run_id: "{{job.run_id}}"
+
+        # Parquet export for the demo backend, only after the gold checks pass.
+        - task_key: gold_export_for_serving
+          depends_on:
+            - task_key: gold_quality_checks
+          timeout_seconds: 1800
+          max_retries: 1
+          min_retry_interval_millis: 60000
+          notebook_task:                       # PySpark notebook on serverless jobs compute
+            notebook_path: ../gold/95_export_for_serving.py
+            base_parameters:
+              gold_schema: "{{job.parameters.gold_schema}}"
+              silver_schema: "{{job.parameters.silver_schema}}"
+              run_id: "{{job.run_id}}"

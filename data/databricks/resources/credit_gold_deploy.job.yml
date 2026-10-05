@@ -1,0 +1,24 @@
+resources:
+  jobs:
+    # Deploy-time objects: shared annuity functions and the credit_offers table. Run once per
+    # deploy (manually); idempotent and never drops credit_offers. latam_bank_medallion also runs
+    # this file before the gold tables, so a fresh schema works without running this job first.
+    credit_gold_deploy:
+      name: credit_gold_deploy
+      description: Creates or updates the gold annuity functions and the credit_offers table.
+      tags:
+        project: credit-assistant
+        layer: gold
+      max_concurrent_runs: 1
+      parameters:
+        - name: gold_schema
+          default: ${var.gold_schema}
+      tasks:
+        - task_key: gold_deploy_objects
+          timeout_seconds: 900
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../gold/00_deploy_objects.sql
+            parameters:
+              gold_schema: "{{job.parameters.gold_schema}}"
