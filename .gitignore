@@ -1,23 +1,41 @@
-# Databricks CLI/extension
-.databricks/
-.bundle/
-
-# Secrets — never commit
+﻿# ---------------------------------------------------------------- secretos (nunca commitear)
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*credentials*
+*secret*
 
-# Python
+# ---------------------------------------------------------------- Databricks CLI / DAB
+.databricks/
+.bundle/
+
+# ---------------------------------------------------------------- datos del organizador y derivados (no se publican)
+.local/
+backend/data/snapshot/
+*.parquet
+!backend/data/fixture/*.parquet
+*.csv
+*.rar
+*.zip
+*.ndjson
+backend/DATOS_DE_PRUEBA.snapshot.md
+
+# ---------------------------------------------------------------- tablas de referencia sinteticas (si se publican)
+!data/reference/*.csv
+
+# ---------------------------------------------------------------- Python / Notebooks
 __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
 venv/
 *.egg-info/
+.ipynb_checkpoints/
 
-# OS / editors
+# ---------------------------------------------------------------- OS / Editores
 .DS_Store
 Thumbs.db
-
-# Local dumps
-*.ndjson
+.vscode/
+.idea/
