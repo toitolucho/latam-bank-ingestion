@@ -48,7 +48,7 @@ resources:
             python_file: ../../../src/python/run_s3_copy.py
             parameters:
               - "--config-dir"
-              - "../../../configs/sources"
+              - "${workspace.root_path}/files/configs/sources"
 
         # ---------------------------------------------------------------- bronze
         - task_key: bronze_load
