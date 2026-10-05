@@ -1,0 +1,75 @@
+resources:
+  jobs:
+    # Update-correctness test for static data: builds a labeled fixture delivery (late status
+    # update, exact duplicate, late arrival, schema change, null key) on *_fixture schemas, runs
+    # the production silver and quality SQL on it unchanged, and asserts the outcome of each case.
+    data_update_fixture_test:
+      name: data_update_fixture_test
+      description: >
+        Test fixture (team-made rows on a bronze sample) that shows the pipeline handles a new
+        delivery correctly: the later version of a record wins, duplicates and null keys are
+        removed, late arrivals are kept and schema changes are flagged in pipeline_quality_metrics.
+        Writes only to the *_fixture schemas.
+      tags:
+        project: credit-assistant
+        layer: test
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      parameters:
+        - name: source_bronze_schema
+          default: ${var.bronze_schema}
+        - name: bronze_schema
+          default: workspace.bronze_latam_bank_fixture
+        - name: silver_schema
+          default: workspace.silver_latam_bank_fixture
+        - name: gold_schema
+          default: workspace.gold_latam_bank_fixture
+      tasks:
+        - task_key: fixture_setup
+          timeout_seconds: 1800
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../tests/00_update_fixture_setup.sql
+            parameters:
+              source_bronze_schema: "{{job.parameters.source_bronze_schema}}"
+              bronze_schema: "{{job.parameters.bronze_schema}}"
+
+        - task_key: silver_typed_dedup
+          depends_on:
+            - task_key: fixture_setup
+          timeout_seconds: 1800
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../02_silver.sql
+            parameters:
+              bronze_schema: "{{job.parameters.bronze_schema}}"
+              silver_schema: "{{job.parameters.silver_schema}}"
+
+        - task_key: silver_quality_checks
+          depends_on:
+            - task_key: silver_typed_dedup
+          timeout_seconds: 900
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../02_silver_quality_checks.sql
+            parameters:
+              bronze_schema: "{{job.parameters.bronze_schema}}"
+              silver_schema: "{{job.parameters.silver_schema}}"
+              gold_schema: "{{job.parameters.gold_schema}}"
+              run_id: "{{job.run_id}}"
+
+        - task_key: fixture_assertions
+          depends_on:
+            - task_key: silver_quality_checks
+          timeout_seconds: 900
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../tests/99_update_fixture_assertions.sql
+            parameters:
+              bronze_schema: "{{job.parameters.bronze_schema}}"
+              silver_schema: "{{job.parameters.silver_schema}}"
+              gold_schema: "{{job.parameters.gold_schema}}"

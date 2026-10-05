@@ -8,8 +8,6 @@ that folder. A file already in the volume with the same size is skipped.
 import fnmatch
 import glob
 import os
-import shutil
-import tempfile
 
 import yaml
 
@@ -115,13 +113,12 @@ def copy_source(cfg, s3_client, spark):
             if os.path.exists(target) and os.path.getsize(target) == obj["Size"]:
                 skipped += 1
                 continue
-            handle, local_path = tempfile.mkstemp()
-            os.close(handle)
-            try:
-                s3_client.download_file(copy["bucket"], key, local_path)
-                shutil.copyfile(local_path, target)
-            finally:
-                os.remove(local_path)
+            # Direct binary stream from S3 into target volume path (16 MB chunks)
+            # Eliminates driver /tmp disk buffering per INGESTION_STRATEGY_FACT_TABLES.md
+            response = s3_client.get_object(Bucket=copy["bucket"], Key=key)
+            with open(target, "wb") as f_out:
+                for chunk in response["Body"].iter_chunks(chunk_size=16 * 1024 * 1024):
+                    f_out.write(chunk)
             copied += 1
     return copied, skipped
 

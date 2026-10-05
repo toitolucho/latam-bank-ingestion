@@ -1,0 +1,4 @@
+# Saltos de linea LF en todo el repositorio (Docker en Linux y CI); los parquet son binarios.
+* text=auto eol=lf
+*.parquet binary
+*.ipynb text eol=lf

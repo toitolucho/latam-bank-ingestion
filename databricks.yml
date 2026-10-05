@@ -4,11 +4,24 @@ bundle:
 include:
   - resources/jobs/*.yml
   - resources/pipelines/*.yml
+  - data/databricks/resources/*.yml
 
 variables:
   catalog:
     description: Unity Catalog catalog for every schema this bundle creates
     default: workspace
+  warehouse_id:
+    description: SQL warehouse that runs the SQL tasks (serverless recommended)
+    default: "2ab3d031bf26ee0d"
+  bronze_schema:
+    description: Bronze schema (raw CSV loads, all STRING)
+    default: workspace.bronze_latam_bank
+  silver_schema:
+    description: Silver schema (typed, deduplicated data and the ref_* tables)
+    default: workspace.silver_latam_bank
+  gold_schema:
+    description: Gold schema (credit profile and offers, customer summaries, fn_*, credit_offers, pipeline_quality_metrics)
+    default: workspace.gold_latam_bank
 
 presets:
   tags:
@@ -27,3 +40,23 @@ targets:
       root_path: /Users/${workspace.current_user.userName}/.bundle/${bundle.name}/dev_sandbox
     variables:
       catalog: workspace
+      bronze_schema: workspace.bronze_latam_bank_test
+      silver_schema: workspace.silver_latam_bank_test
+      gold_schema: workspace.gold_latam_bank_test
+
+  dev:
+    mode: development
+    workspace:
+      host: https://dbc-c48d6b98-036d.cloud.databricks.com
+      profile: datathon-dev
+    variables:
+      bronze_schema: workspace.bronze_latam_bank_test
+      silver_schema: workspace.silver_latam_bank_test
+      gold_schema: workspace.gold_latam_bank_test
+
+  prod:
+    mode: production
+    workspace:
+      host: https://dbc-c48d6b98-036d.cloud.databricks.com
+      profile: datathon-dev
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}

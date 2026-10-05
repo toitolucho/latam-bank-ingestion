@@ -1,0 +1,6 @@
+band,min_credit_score,rate_adjustment_pp,offer_allowed,max_term_personal_loan_months,max_term_mortgage_months,is_synthetic
+A,740,-2.0,true,60,360,true
+B,680,-1.0,true,60,360,true
+C,620,0.0,true,48,300,true
+D,560,2.0,true,36,240,true
+E,0,0.0,false,0,0,true

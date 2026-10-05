@@ -1,0 +1,5 @@
+tier,tier_code,tier_rank,limit_from_pct,limit_to_pct,rate_pct,is_synthetic
+Classic,CLA,1,0,40,80,true
+Gold,GLD,2,40,70,60,true
+Platinum,PLT,3,70,90,40,true
+Black,BLK,4,90,100,20,true

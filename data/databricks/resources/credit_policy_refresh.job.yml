@@ -1,0 +1,90 @@
+resources:
+  jobs:
+    # Recomputes the credit profile and offers when the credit policy (silver ref_*) changes,
+    # without reloading bronze/silver. The full daily pipeline is latam_bank_medallion.
+    credit_policy_refresh:
+      name: credit_policy_refresh
+      description: >
+        Rebuilds gold customer_credit_profile and customer_credit_offer_options from silver with
+        the credit policy in silver ref_*, then runs the gold quality checks (metrics in
+        pipeline_quality_metrics) that fail the job on bad data. Run it after a policy change.
+        Synthetic policy; see docs/CREDIT_RULES.md.
+      tags:
+        project: credit-assistant
+        layer: gold
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      parameters:
+        - name: silver_schema
+          default: ${var.silver_schema}
+        - name: gold_schema
+          default: ${var.gold_schema}
+        # YYYY-MM-DD. Empty uses the policy cutoff in ref_policy_params (2026-06-30 for the static
+        # hackathon data). With live data set the default to "{{job.start_time.iso_date}}".
+        - name: as_of_date
+          default: ""
+      # Run when the policy tables change (load_reference.py rewrites them). Paused: run by hand
+      # until the trigger is tested.
+      trigger:
+        pause_status: PAUSED
+        table_update:
+          condition: ANY_UPDATED   # required when more than one table is watched
+          table_names:
+            - ${var.silver_schema}.ref_policy_params
+            - ${var.silver_schema}.ref_policy_bands
+            - ${var.silver_schema}.ref_segment_adjustments
+            - ${var.silver_schema}.ref_term_grid
+      tasks:
+        - task_key: gold_customer_credit_profile
+          timeout_seconds: 1800
+          max_retries: 1
+          min_retry_interval_millis: 60000
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../gold/10_customer_credit_profile.sql
+            parameters:
+              as_of_date: "{{job.parameters.as_of_date}}"
+              silver_schema: "{{job.parameters.silver_schema}}"
+              gold_schema: "{{job.parameters.gold_schema}}"
+
+        - task_key: gold_customer_credit_offer_options
+          depends_on:
+            - task_key: gold_customer_credit_profile
+          timeout_seconds: 1800
+          max_retries: 1
+          min_retry_interval_millis: 60000
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../gold/20_customer_credit_offer_options.sql
+            parameters:
+              silver_schema: "{{job.parameters.silver_schema}}"
+              gold_schema: "{{job.parameters.gold_schema}}"
+
+        - task_key: gold_quality_checks
+          depends_on:
+            - task_key: gold_customer_credit_offer_options
+          timeout_seconds: 900
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../gold/90_quality_checks.sql
+            parameters:
+              silver_schema: "{{job.parameters.silver_schema}}"
+              gold_schema: "{{job.parameters.gold_schema}}"
+              run_id: "{{job.run_id}}"
+
+        # Parquet export for the demo backend, only after the gold checks pass.
+        - task_key: gold_export_for_serving
+          depends_on:
+            - task_key: gold_quality_checks
+          timeout_seconds: 1800
+          max_retries: 1
+          min_retry_interval_millis: 60000
+          notebook_task:                       # PySpark notebook on serverless jobs compute
+            notebook_path: ../gold/95_export_for_serving.py
+            base_parameters:
+              gold_schema: "{{job.parameters.gold_schema}}"
+              silver_schema: "{{job.parameters.silver_schema}}"
+              run_id: "{{job.run_id}}"

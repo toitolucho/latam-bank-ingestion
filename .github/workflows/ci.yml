@@ -1,0 +1,18 @@
+﻿name: CI
+
+on:
+  push:
+    branches: [main, feat/*]
+  pull_request:
+
+jobs:
+  secrets:
+    name: Barrido de secretos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Buscar claves conocidas en el repositorio
+        run: |
+          if grep -rIn --exclude-dir=.git -E 'AKIA[0-9A-Z]{16}|sk-ant-[A-Za-z0-9_-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----' . ; then
+            echo "Se encontraron posibles secretos"; exit 1
+          fi

@@ -1,0 +1,42 @@
+# Databricks Asset Bundle for the LATAM Bank medallion pipeline and the gold credit layer.
+# Deploy:  databricks bundle deploy -t dev --profile <profile> --var="warehouse_id=<sql-warehouse-id>"
+# Run:     databricks bundle run latam_bank_medallion -t dev --profile <profile> --var="warehouse_id=<sql-warehouse-id>"
+# The workspace comes from the CLI profile; no host or ids are stored in the repository.
+bundle:
+  name: credit-gold
+
+include:
+  - resources/*.yml
+
+variables:
+  warehouse_id:
+    description: SQL warehouse that runs the SQL tasks (serverless recommended)
+  # catalog.schema of each layer. Defaults are the real schemas; the dev target points to _test.
+  bronze_schema:
+    description: Bronze schema (raw CSV loads, all STRING)
+    default: workspace.bronze_latam_bank
+  silver_schema:
+    description: Silver schema (typed, deduplicated data and the ref_* tables)
+    default: workspace.silver_latam_bank
+  gold_schema:
+    description: Gold schema (credit profile and offers, customer summaries, fn_*, credit_offers, pipeline_quality_metrics)
+    default: workspace.gold_latam_bank
+
+targets:
+  # Development: resources are prefixed with "[dev <user>]", owned by the deploying user, and
+  # schedules are paused automatically.
+  dev:
+    mode: development
+    default: true
+    variables:
+      bronze_schema: workspace.bronze_latam_bank_test
+      silver_schema: workspace.silver_latam_bank_test
+      gold_schema: workspace.gold_latam_bank_test
+
+  # Production: unprefixed jobs under the deploying principal (restricted folder). Before the
+  # first deploy, set run_as to a service principal and add failure notifications
+  # (see data/databricks/README.md).
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
