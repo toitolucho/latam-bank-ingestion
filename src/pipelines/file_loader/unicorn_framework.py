@@ -1,16 +1,16 @@
 """
-axos_framework.py
+unicorn_framework.py
 ================================================================================
 Shared helpers for the TCI config-driven file-loader pipeline.
 ================================================================================
 
-Adapted from the processibeam bundle's axos_framework. Provides:
+Adapted from the processibeam bundle's unicorn_framework. Provides:
   - Naming standard (catalog.schema.table construction)
   - Config folder scanning
   - Auto Loader option mapping
   - Validation
 
-CURRENT AXOS STANDARD
+CURRENT UNICORN STANDARD
     catalog.schema.table  =  {division}_{env}.{layer}_{sor}.{table}
     e.g.                     enterprise_dev.staging_tci.some_table
 """
@@ -174,7 +174,7 @@ def validate_identity(sources: list):
 
 # Dev landing accounts — block non-dev environments from reading dev data.
 DEV_ENV = "dev"
-DEV_LANDING_ACCOUNTS = ("axdevdbxlanding",)
+DEV_LANDING_ACCOUNTS = ("unicorndevlanding",)
 _ABFSS_HOST = re.compile(r"^abfss://[^@/]*@([^/]+)", re.IGNORECASE)
 
 

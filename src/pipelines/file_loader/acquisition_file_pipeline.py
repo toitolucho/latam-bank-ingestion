@@ -24,10 +24,10 @@ for _candidate in (spark.conf.get("pipeline_source_dir", None), os.getcwd()):
         sys.path.insert(0, _candidate)
 
 try:
-    import axos_framework as axos
+    import unicorn_framework as unicorn
 except ModuleNotFoundError as exc:
     raise ModuleNotFoundError(
-        "Could not import axos_framework.py. Ensure it sits next to this file "
+        "Could not import unicorn_framework.py. Ensure it sits next to this file "
         "in src/pipelines/file_loader/ and the pipeline's `configuration:` block "
         "sets 'pipeline_source_dir' to the synced workspace path of that folder. "
         f"sys.path was: {sys.path[:3]}"
@@ -36,15 +36,15 @@ except ModuleNotFoundError as exc:
 # ---------------------------------------------------------------------------
 # Config folder scan
 # ---------------------------------------------------------------------------
-_ENV = axos.resolve_env(spark)
-_CONFIG_DIR = axos.resolve_config_dir(spark)
-_SOURCES = list(axos.load_table_configs(_CONFIG_DIR))
+_ENV = unicorn.resolve_env(spark)
+_CONFIG_DIR = unicorn.resolve_config_dir(spark)
+_SOURCES = list(unicorn.load_table_configs(_CONFIG_DIR))
 _PIPELINE_CATALOG = spark.conf.get("pipeline.catalog", None)
 
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
-axos.validate_acquisition(_SOURCES, _ENV)
+unicorn.validate_acquisition(_SOURCES, _ENV)
 
 # ---------------------------------------------------------------------------
 # Provenance columns
@@ -67,9 +67,9 @@ def _add_provenance(df):
 for _filename, _src in _SOURCES:
 
     staging_table = (
-        f"{_PIPELINE_CATALOG}.{axos.staging_schema(_src)}.{_src['source_table']}"
+        f"{_PIPELINE_CATALOG}.{unicorn.staging_schema(_src)}.{_src['source_table']}"
         if _PIPELINE_CATALOG
-        else axos.staging_fqn(_src, _ENV)
+        else unicorn.staging_fqn(_src, _ENV)
     )
 
     _table_properties = {
@@ -79,7 +79,7 @@ for _filename, _src in _SOURCES:
         "ingestion.file_format": str(_src["file_format"]),
         "ingestion.config_file": _filename,
         "quality": "staging",
-        **axos.source_tags(_src),
+        **unicorn.source_tags(_src),
     }
 
     dp.create_streaming_table(
@@ -97,6 +97,6 @@ for _filename, _src in _SOURCES:
         reader = (
             spark.readStream
             .format("cloudFiles")
-            .options(**axos.autoloader_options(src))
+            .options(**unicorn.autoloader_options(src))
         )
         return reader.load(src["source_path"]).transform(_add_provenance)
