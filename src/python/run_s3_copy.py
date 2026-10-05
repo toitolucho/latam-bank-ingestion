@@ -4,7 +4,13 @@ import argparse
 import os
 import sys
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Determine script path safely across direct python execution and Databricks ipykernel exec
+_raw_script = globals().get("__file__") or (sys.argv[0] if (sys.argv and sys.argv[0].endswith(".py")) else None)
+if _raw_script:
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(_raw_script))
+else:
+    SCRIPT_DIR = os.path.abspath(os.path.join(os.getcwd(), "src", "python"))
+
 # SCRIPT_DIR is <project_root>/src/python
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 
@@ -17,11 +23,11 @@ from file_copy.s3_copy import run  # noqa: E402
 def resolve_config_dir(raw_path: str | None) -> str:
     """Resolve configs/sources directory robustly across driver environments."""
     if raw_path:
-        # 1. Direct path check (e.g. absolute path or relative to CWD)
+        # 1. Direct path check (e.g. absolute path ${workspace.root_path}/files/configs/sources)
         if os.path.isdir(raw_path):
             return os.path.abspath(raw_path)
 
-        # 2. If path contains configs/sources or configs/..., check relative to PROJECT_ROOT
+        # 2. If path contains configs/sources, check relative to PROJECT_ROOT
         norm = raw_path.replace("\\", "/")
         if "configs/sources" in norm:
             subpath = norm[norm.find("configs/sources"):]
