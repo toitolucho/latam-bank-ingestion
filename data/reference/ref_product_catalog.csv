@@ -1,0 +1,4 @@
+product_code,product_type,source_product_type,min_amount_usd,max_amount_usd,min_rate_pct,max_rate_pct,allowed_terms_months,is_synthetic
+CC,Credit Card,Tarjeta Crédito,1000,50000,18,45,60,true
+PL,Personal Loan,Préstamo Personal,5000,150000,12,28,24|36|48|60,true
+MG,Mortgage,Préstamo Hipotecario,5000,150000,6,12,180|240|300|360,true

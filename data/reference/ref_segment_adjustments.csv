@@ -1,0 +1,5 @@
+segment,rate_adjustment_pp,is_synthetic
+Premium,-1.0,true
+Plus,-0.5,true
+Basic,0.0,true
+Student,1.0,true

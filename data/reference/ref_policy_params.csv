@@ -1,0 +1,10 @@
+param_name,param_value,unit,description,is_synthetic
+max_debt_to_income,0.20,ratio,Hard limit: all monthly installments (current + new) cannot exceed this share of monthly income,true
+min_tenure_months,6,months,R02 minimum customer tenure,true
+max_days_past_due,30,days,R03 maximum days past due on any active credit product,true
+min_income_usd,300,USD/month,R05 minimum monthly income,true
+fraud_lookback_days,90,days,R07 window for confirmed fraud transactions,true
+offer_validity_days,30,days,Days an accepted offer stays valid,true
+max_age_at_maturity_years,75,years,Personal loans and mortgages must end before the customer reaches this age: caps the band maximum term (advisor verifies age and life insurance),true
+as_of_date,2026-06-30,date,Serving cutoff date for all indicators,true
+policy_version,0.4,text,Version of the credit policy parameters,true
